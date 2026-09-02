@@ -171,7 +171,7 @@ class LongTermMemory:
                     "Evicted %d conversation history entries under retention policy.",
                     deleted_count,
                 )
-            return int(deleted_count)
+            return deleted_count
 
     def _enforce_facts_bound(self) -> int:
         """Evict least recently accessed user facts exceeding maximum facts bound (LRU)."""
@@ -189,7 +189,7 @@ class LongTermMemory:
                 (self.max_facts_entries,),
             )
             deleted_count = cursor.rowcount
-            return int(deleted_count)
+            return deleted_count
 
     def clear_all_memory(self) -> None:
         """Privacy purge: completely erase all conversation history, user facts, and preferences."""
@@ -201,6 +201,49 @@ class LongTermMemory:
             self._conn.execute("DELETE FROM user_preferences;")
             self._conn.execute("DELETE FROM intent_audit_log;")
         logger.info("Executed complete privacy purge of all long-term memory.")
+
+    def log_intent_audit(
+        self,
+        intent_id: str,
+        intent_type: str,
+        risk_level: str,
+        payload_json: str,
+        confirmed_by_user: bool,
+        status: str,
+    ) -> None:
+        """Persist an audit log entry for delegated intents."""
+        if not self._conn:
+            return
+        with self._conn:
+            self._conn.execute(
+                """
+                INSERT INTO intent_audit_log (intent_id, intent_type, risk_level, payload_json, confirmed_by_user, status)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    intent_id,
+                    intent_type,
+                    risk_level,
+                    payload_json,
+                    1 if confirmed_by_user else 0,
+                    status,
+                ),
+            )
+
+    def get_intent_audit_logs(self, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve recent intent audit entries."""
+        if not self._conn:
+            return []
+        cursor = self._conn.cursor()
+        cursor.execute(
+            """
+            SELECT intent_id, intent_type, risk_level, payload_json, confirmed_by_user, status, created_at
+            FROM intent_audit_log
+            ORDER BY id DESC LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
 
     def vacuum(self) -> None:
         """Reclaim unused storage space."""
