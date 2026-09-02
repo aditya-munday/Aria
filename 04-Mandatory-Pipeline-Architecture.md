@@ -15,7 +15,7 @@ Microphone
     ↓
 [3] smallest.ai STT       ← streaming transcription
     ↓
-[4] Grok (xAI)            ← system prompts + tools + database memory
+[4] Groq (LPU)            ← system prompts + tools + database memory
     ↓
 [5] smallest.ai TTS       ← streaming audio out
     ↓
@@ -46,8 +46,8 @@ Any deviation from this order requires an explicit architecture decision record 
 - Low latency partials preferred
 - Output goes to the Intent & Personality layer
 
-### 4. Grok (xAI)
-- Primary reasoning engine
+### 4. Groq (Reasoning & LLM)
+- Primary reasoning engine (Llama-3.3-70B on Groq LPU inference for ultra-low TTFT)
 - Receives:
   - Current mode (Aria / Jarvis)
   - System prompt (different personality matrix per mode)
@@ -79,7 +79,7 @@ Any deviation from this order requires an explicit architecture decision record 
 
 ## 3. Dual-Mode Personality via System Prompts
 
-Grok must receive different system prompts depending on the active mode:
+Groq must receive different system prompts depending on the active mode:
 
 - **Aria Mode**: warm, concise, elegant, helpful, lower information density
 - **Jarvis Mode**: precise, authoritative, slightly formal, higher information density, willing to surface system status and alternatives
@@ -92,7 +92,7 @@ The mode is set at wake-word detection and remains stable for the session unless
 
 Even with the new pipeline, Aria **never** executes system actions.  
 All OS-touching requests are turned into intents and sent through the existing Directioner AI pipeline.  
-Grok may call a `delegate_to_directioner_ai` tool; it may not call shell, filesystem, or package tools directly.
+Groq may call a `delegate_to_directioner_ai` tool; it may not call shell, filesystem, or package tools directly.
 
 ---
 

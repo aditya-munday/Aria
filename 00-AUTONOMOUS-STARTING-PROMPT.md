@@ -35,7 +35,7 @@ The voice pipeline **must** follow this exact order:
 1. **Wake Word** → openWakeWord (dual models: “Aria” + “Jarvis”)
 2. **VAD** → Silero VAD (end-of-utterance detection)
 3. **STT** → smallest.ai (streaming)
-4. **Reasoning** → Grok (xAI) with:
+4. **Reasoning** → Groq (LPU / Llama-3.3-70B) with:
    - Strong system prompts (personality matrix for Aria Mode vs Jarvis Mode)
    - Tool / function calling
    - Integration with a local/remote database for memory & context
@@ -90,7 +90,7 @@ All system actions still go through the Directioner AI Intent API (never execute
 
    **Phase 1 – Core Voice Pipeline Skeleton**
    - Project structure matching the mandatory architecture
-   - Wake word + VAD + STT + Grok + TTS interfaces (mocked or real where possible in CI)
+   - Wake word + VAD + STT + Groq + TTS interfaces (mocked or real where possible in CI)
    - Dual-mode personality system prompts
    - Database schema for session + long-term memory
    - All of the above must be testable / lintable in GitHub Actions
