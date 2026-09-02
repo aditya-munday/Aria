@@ -12,15 +12,17 @@ logger = logging.getLogger(__name__)
 
 class PanelLayoutStrategy(str, Enum):
     """Layout engine placement strategies for active panels."""
-    CENTER = "center"   # 1 panel
-    FAN = "fan"         # 2-3 panels
-    GRID = "grid"       # 4+ panels
-    DOCKED = "docked"   # Edge-docked with core as gravity center
+
+    CENTER = "center"  # 1 panel
+    FAN = "fan"  # 2-3 panels
+    GRID = "grid"  # 4+ panels
+    DOCKED = "docked"  # Edge-docked with core as gravity center
 
 
 @dataclass
 class CanvasPanel:
     """Individual floating canvas panel card."""
+
     panel_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     title: str = ""
     panel_type: str = "card"  # 'card' | 'chart' | 'media' | 'terminal' | 'weather'
@@ -74,10 +76,7 @@ class CanvasPanelManager:
 
     def dismiss_all(self, include_pinned: bool = False) -> int:
         """Dismiss all unpinned panels (or all if include_pinned=True)."""
-        to_remove = [
-            pid for pid, p in self.panels.items()
-            if include_pinned or not p.is_pinned
-        ]
+        to_remove = [pid for pid, p in self.panels.items() if include_pinned or not p.is_pinned]
         for pid in to_remove:
             del self.panels[pid]
         self.recompute_layout()
@@ -102,7 +101,8 @@ class CanvasPanelManager:
         """Remove panels exceeding TTL that are not pinned."""
         now = time.time()
         expired = [
-            pid for pid, p in self.panels.items()
+            pid
+            for pid, p in self.panels.items()
             if not p.is_pinned and (now - p.last_interacted_at) > p.ttl_seconds
         ]
         for pid in expired:

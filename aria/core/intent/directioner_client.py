@@ -70,9 +70,11 @@ class DirectionerAIClient:
         self,
         endpoint_url: str | None = None,
         timeout_seconds: float = 15.0,
+        memory: Any = None,
     ) -> None:
         self.endpoint_url = endpoint_url
         self.timeout_seconds = timeout_seconds
+        self.memory = memory
         self._execution_history: list[IntentPayload] = []
 
     def build_intent_from_tool_call(self, arguments_json: str) -> IntentPayload:
@@ -118,6 +120,15 @@ class DirectionerAIClient:
                 "Intent %s requires human confirmation before execution.",
                 intent.intent_id,
             )
+            if self.memory and hasattr(self.memory, "log_intent_audit"):
+                self.memory.log_intent_audit(
+                    intent_id=intent.intent_id,
+                    intent_type=intent.action_name,
+                    risk_level=intent.risk_tier.value,
+                    payload_json=json.dumps(intent.parameters),
+                    confirmed_by_user=False,
+                    status="rejected",
+                )
             return IntentExecutionResult(
                 intent_id=intent.intent_id,
                 status="rejected",
@@ -134,6 +145,16 @@ class DirectionerAIClient:
             intent.category.value,
             intent.action_name,
         )
+
+        if self.memory and hasattr(self.memory, "log_intent_audit"):
+            self.memory.log_intent_audit(
+                intent_id=intent.intent_id,
+                intent_type=intent.action_name,
+                risk_level=intent.risk_tier.value,
+                payload_json=json.dumps(intent.parameters),
+                confirmed_by_user=confirmed_by_user,
+                status="success",
+            )
 
         return IntentExecutionResult(
             intent_id=intent.intent_id,
