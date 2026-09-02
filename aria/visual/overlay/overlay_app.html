@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aria — Visual Overlay Compositor</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      width: 100vw;
+      height: 100vh;
+      color: #FFFFFF;
+    }
+
+    #overlay-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #presence-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Trust & Safety Status Header */
+    #status-bar {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(18, 22, 36, 0.7);
+      backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+      font-weight: 500;
+      pointer-events: auto;
+    }
+
+    .mic-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ADE80;
+      box-shadow: 0 0 8px #4ADE80;
+    }
+    .mic-dot.listening {
+      background: #8FA8FF;
+      box-shadow: 0 0 12px #8FA8FF;
+      animation: pulse 1s infinite;
+    }
+    .mic-dot.jarvis {
+      background: #00E5FF;
+      box-shadow: 0 0 12px #00E5FF;
+    }
+
+    /* State Badge */
+    #state-pill {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 18px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
+    }
+
+    /* Confirmation Modal Card */
+    #confirm-card {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 380px;
+      background: rgba(20, 16, 12, 0.92);
+      border: 1.5px solid #FFB300;
+      box-shadow: 0 0 30px rgba(255, 179, 0, 0.35);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      pointer-events: auto;
+    }
+    #confirm-card.active {
+      display: block;
+      animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .confirm-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #FFB300;
+      color: #000000;
+      margin-bottom: 12px;
+    }
+    .confirm-timer {
+      float: right;
+      font-weight: 600;
+      color: #FFB300;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.6; }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, -46%); }
+      to { opacity: 1; transform: translate(-50%, -50%); }
+    }
+  </style>
+</head>
+<body>
+  <div id="overlay-container">
+    <canvas id="presence-canvas"></canvas>
+
+    <!-- Permanent Trust Indicator -->
+    <div id="status-bar">
+      <div id="mic-indicator" class="mic-dot"></div>
+      <span id="mode-label">Aria Mode</span>
+    </div>
+
+    <!-- Active State Pill -->
+    <div id="state-pill">IDLE</div>
+
+    <!-- Voice & Visual Confirmation Card (DD-001) -->
+    <div id="confirm-card">
+      <div>
+        <span class="confirm-badge">HIGH RISK ACTION</span>
+        <span id="timer-counter" class="confirm-timer">10s</span>
+      </div>
+      <h3 style="font-size: 16px; margin-bottom: 8px;">Action Confirmation Required</h3>
+      <p id="confirm-summary" style="font-size: 13px; color: #D1D5DB; margin-bottom: 18px;">
+        Shall I proceed with this operation?
+      </p>
+      <div style="display: flex; gap: 10px;">
+        <button style="flex:1; padding: 8px; background: #FFB300; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; color: #000;">Confirm (Enter)</button>
+        <button style="flex:1; padding: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #FFF; cursor: pointer;">Cancel (Esc)</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { SoftOrbRenderer } from '../aria_mode/soft_orb.js';
+    import { ArcReactorRenderer } from '../jarvis_mode/arc_reactor.js';
+
+    const canvas = document.getElementById('presence-canvas');
+    const modeLabel = document.getElementById('mode-label');
+    const micDot = document.getElementById('mic-indicator');
+    const statePill = document.getElementById('state-pill');
+    const confirmCard = document.getElementById('confirm-card');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    const ariaRenderer = new SoftOrbRenderer(canvas);
+    const jarvisRenderer = new ArcReactorRenderer(canvas);
+
+    // Current state snapshot
+    let snapshot = {
+      pipeline_state: 'idle',
+      mode: 'aria',
+      scale: 1.0,
+      glow_intensity: 0.3,
+      primary_color: '#8FA8FF',
+      secondary_color: '#D4BFFF',
+      audio_amplitude: 0.0,
+      is_transforming: false,
+      transformation_progress: 1.0
+    };
+
+    function renderLoop() {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (snapshot.mode === 'jarvis') {
+        jarvisRenderer.render(snapshot);
+      } else {
+        ariaRenderer.render(snapshot);
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+    requestAnimationFrame(renderLoop);
+
+    // Update UI Elements
+    window.updateVisualState = function(newSnapshot) {
+      Object.assign(snapshot, newSnapshot);
+
+      modeLabel.textContent = snapshot.mode === 'jarvis' ? 'Jarvis Mode' : 'Aria Mode';
+      statePill.textContent = snapshot.pipeline_state.toUpperCase();
+
+      micDot.className = 'mic-dot';
+      if (snapshot.mode === 'jarvis') micDot.classList.add('jarvis');
+      if (snapshot.pipeline_state === 'listening') micDot.classList.add('listening');
+
+      if (snapshot.pipeline_state === 'confirmation_required') {
+        confirmCard.classList.add('active');
+      } else {
+        confirmCard.classList.remove('active');
+      }
+    };
+  </script>
+</body>
+</html>
