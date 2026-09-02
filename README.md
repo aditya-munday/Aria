@@ -19,16 +19,42 @@ Microphone
     ↓
 [3] smallest.ai STT       ← streaming transcription
     ↓
-[4] Grok (xAI)            ← system prompts + tools + database memory
+[4] Groq (LPU)            ← system prompts + tools + database memory
     ↓
 [5] smallest.ai TTS       ← streaming audio out
     ↓
 [6] Audio Analysis        ← amplitude / pitch / beat → drives visuals
     ↓
-Visual Overlay + Canvas + Advanced Vision Control (phase 2+)
+Visual Overlay + Canvas + Advanced Vision Control
 ```
 
 All system actions **must** delegate to the Directioner AI Intent API. Aria never executes OS actions directly.
+
+---
+
+## 🚀 Unified CLI Usage
+
+Aria provides a unified command-line tool `aria` (or `python -m aria`):
+
+```bash
+# Run a voice pipeline turn (simulated in CI / testing)
+aria run --mode aria --query "Hello Aria, what is your status?"
+aria run --mode jarvis --query "System diagnostic report."
+
+# Run the real-time latency and throughput benchmark harness
+aria benchmark
+
+# Manage user preferences and system settings (stored in SQLite)
+aria config --set voice_id "aria-v1-warm"
+aria config --get default_mode
+
+# Database memory management & privacy controls
+aria memory --stats
+aria memory --purge    # Instant privacy purge of all history and facts
+
+# Start the visual overlay WebSocket server
+aria overlay --port 8765
+```
 
 ---
 
@@ -40,19 +66,26 @@ All system actions **must** delegate to the Directioner AI Intent API. Aria neve
 ├── 02-Aria-Architecture-and-Build-Guide.md # Architecture guide (LOCKED)
 ├── 03-Aria-UI-UX-Spec.md              # UI/UX specification (LOCKED)
 ├── 04-Mandatory-Pipeline-Architecture.md # Technical pipeline contract
-├── aria/                              # Core Python implementation
+├── aria/                              # Core Python package
+│   ├── cli.py                         # Unified CLI entry point
 │   ├── core/
-│   │   ├── audio/                     # Audio capture, analysis, playback
-│   │   ├── intent/                    # Directioner AI Intent API boundary
-│   │   ├── llm/                       # Grok reasoning & personality matrix
-│   │   ├── memory/                    # SQLite session & long-term memory
-│   │   ├── pipeline/                  # Canonical pipeline orchestrator & events
+│   │   ├── audio/                     # Audio capture, analysis, and playback bridges
+│   │   ├── config.py                  # User preferences and system configuration
+│   │   ├── intent/                    # Directioner AI Intent API, schemas & confirmation
+│   │   ├── llm/                       # Groq LPU reasoning client & personality matrices
+│   │   ├── media/                     # Media playback controller & beat synchronizer
+│   │   ├── memory/                    # SQLite session & bounded long-term storage
+│   │   ├── pipeline/                  # Canonical pipeline orchestrator & event bus
 │   │   ├── stt/                       # smallest.ai streaming STT
 │   │   ├── tts/                       # smallest.ai streaming TTS
 │   │   ├── vad/                       # Silero VAD wrapper
+│   │   ├── vision/                    # Screen awareness & vision tools
 │   │   └── wake/                      # openWakeWord dual-model detector
 │   └── visual/
-│       └── overlay/                   # Compositor bridge & state machine
+│       ├── aria_mode/                 # Aria soft orb WebGL/Canvas renderer
+│       ├── canvas/                    # Floating canvas panels & adaptive layouts
+│       ├── jarvis_mode/               # Jarvis Arc-Reactor HUD WebGL/Canvas renderer
+│       └── overlay/                   # Compositor bridge, WebSocket server & HTML app
 ├── tests/                             # Unit, integration, & benchmark tests
 ├── .github/
 │   ├── workflows/                     # GitHub Actions CI (lint, typecheck, test, benchmark)
@@ -66,17 +99,16 @@ All system actions **must** delegate to the Directioner AI Intent API. Aria neve
 
 All testing, building, and validation is automated in GitHub Actions.
 
-### Quick Commands
-
 ```bash
-# Run linters
+# Run linters and formatting
 ruff check .
+ruff format --check .
 
-# Run type checker
+# Run strict type checking
 mypy aria tests
 
-# Run test suite
-pytest -v
+# Run test suite with code coverage
+pytest -v --cov=aria
 ```
 
 ---
