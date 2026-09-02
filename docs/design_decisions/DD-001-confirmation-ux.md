@@ -18,7 +18,7 @@ When an Intent entails system modifications (e.g. file deletion, package install
 
 ### Option A: Synchronous Voice-First with Visual Card Confirmation (Dual-Channel)
 - **Mechanism:**
-  1. Grok flags high-risk intent and enters `CONFIRMATION_REQUIRED` state.
+  1. Groq flags high-risk intent and enters `CONFIRMATION_REQUIRED` state.
   2. Overlay displays a high-contrast amber/gold confirmation card presenting:
      - Clear plain-language action summary (e.g., *"Delete 12 files in ~/Downloads"*).
      - Risk level badge (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
